@@ -1,26 +1,29 @@
-use std::{collections::HashSet, sync::Mutex};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Deref,
+    sync::Mutex,
+};
 
 use anyhow::Result;
 use lru::LruCache;
-use twilight_model::id::{
-    Id,
-    marker::{RoleMarker, UserMarker},
-};
+use twilight_model::id::{Id, marker::UserMarker};
 
-use crate::core::database::ConnectionWrapper;
+use crate::core::database::{ConnectionWrapper, CustomRole};
 
 #[derive(Debug)]
 pub struct Cache {
     pub energy_balance: EnergyBalance,
-    pub roles: HashSet<Id<RoleMarker>>,
+    pub user_custom_roles: UserCustomRole,
+    pub boosters: Mutex<HashSet<Id<UserMarker>>>,
 }
 
 impl Cache {
-    pub fn new(conn: ConnectionWrapper) -> Cache {
-        Cache {
-            energy_balance: EnergyBalance::new(50, conn),
-            roles: Default::default(),
-        }
+    pub async fn new(conn: ConnectionWrapper) -> Result<Cache> {
+        Ok(Cache {
+            energy_balance: EnergyBalance::new(50, conn.clone()),
+            user_custom_roles: UserCustomRole::new(conn).await?,
+            boosters: Default::default(),
+        })
     }
 }
 
@@ -89,6 +92,24 @@ impl EnergyBalance {
         }
     }
 
+    pub async fn consume_energy(&self, user_id: Id<UserMarker>, amount: u64) -> Result<bool> {
+        let status = self.balance.lock().unwrap().get_mut(&user_id).map(|data| {
+            if data.energy > amount {
+                data.energy -= amount;
+                data.is_dirty = true;
+                return true;
+            }
+            false
+        });
+
+        if let Some(status) = status {
+            return Ok(status);
+        }
+
+        let status = self.connection.consume_energy(user_id, amount).await?;
+        Ok(status)
+    }
+
     pub async fn sync_energy_data(&self) -> Result<()> {
         let dirty_data = self
             .balance
@@ -103,5 +124,36 @@ impl EnergyBalance {
             .collect::<Vec<_>>();
 
         self.connection.sync_energy_data(dirty_data).await
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct UserCustomRole(Mutex<HashMap<Id<UserMarker>, CustomRole>>);
+
+impl UserCustomRole {
+    pub async fn new(conn: ConnectionWrapper) -> Result<UserCustomRole> {
+        let collection = conn.fetch_custom_roles().await?;
+        let map = collection
+            .into_iter()
+            .map(|role| (role.user_id, role))
+            .collect();
+        Ok(UserCustomRole(Mutex::new(map)))
+    }
+    pub fn get(&self, user_id: Id<UserMarker>) -> Option<CustomRole> {
+        self.0.lock().unwrap().get(&user_id).cloned()
+    }
+    pub fn remove(&self, user_id: Id<UserMarker>) -> Option<CustomRole> {
+        self.0.lock().unwrap().remove(&user_id)
+    }
+    pub fn update(&self, role: CustomRole) {
+        self.0.lock().unwrap().insert(role.user_id, role);
+    }
+}
+
+impl Deref for UserCustomRole {
+    type Target = Mutex<HashMap<Id<UserMarker>, CustomRole>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

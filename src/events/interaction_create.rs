@@ -4,7 +4,6 @@ use anyhow::Result;
 use twilight_model::{
     application::interaction::{Interaction, InteractionData},
     gateway::payload::incoming::InteractionCreate,
-    http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
     id::{
         Id,
         marker::{ApplicationMarker, InteractionMarker},
@@ -20,7 +19,7 @@ use crate::{
     },
 };
 
-pub async fn handle(mut interaction: Box<InteractionCreate>, state: AppState) -> Result<()> {
+pub async fn handle(state: AppState, mut interaction: Box<InteractionCreate>) -> Result<()> {
     let auth = InteractionAuth {
         application_id: interaction.application_id,
         interaction_id: interaction.id,
@@ -39,8 +38,8 @@ pub async fn handle(mut interaction: Box<InteractionCreate>, state: AppState) ->
         InteractionItem::ShopNickname => shop_nickname::run(),
         InteractionItem::TradeCustomRole => trade_custom_role::run(),
         InteractionItem::TradeNickname => trade_nickname::run(),
-        InteractionItem::ConfirmTradeCustomRole(data) => confirm_trade_custom_role::run(),
-        InteractionItem::ConfirmTradeNickname(data) => confirm_trade_nickname::run(),
+        InteractionItem::ConfirmTradeCustomRole(data) => confirm_trade_custom_role::run(data),
+        InteractionItem::ConfirmTradeNickname(data) => confirm_trade_nickname::run(data),
         InteractionItem::CustomRoleSubscribe => {
             custom_role_subscribe::run(state.clone(), true).await?
         }
@@ -82,7 +81,7 @@ enum InteractionItem {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct SimpleConfirmation(bool);
+pub struct SimpleConfirmation(bool);
 
 impl SimpleConfirmation {
     pub fn new(msg: &str) -> SimpleConfirmation {
@@ -93,8 +92,8 @@ impl SimpleConfirmation {
     }
 }
 
-type ConfirmTradeCustomRole = SimpleConfirmation;
-struct ConfirmTradeNickname {
+pub type ConfirmTradeCustomRole = SimpleConfirmation;
+pub struct ConfirmTradeNickname {
     pub nickname: String,
 }
 

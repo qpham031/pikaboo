@@ -3,6 +3,15 @@ use twilight_model::gateway::payload::incoming::MemberUpdate;
 
 use crate::core::app_state::AppState;
 
-pub async fn handle(member_update: Box<MemberUpdate>, state: AppState) -> Result<()> {
-    todo!()
+pub fn handle(state: AppState, member_update: Box<MemberUpdate>) -> Result<()> {
+    let is_booster = member_update.premium_since.is_some();
+    let mut boosters = state.cache.boosters.lock().unwrap();
+
+    if is_booster {
+        boosters.insert(member_update.user.id);
+    } else {
+        boosters.remove(&member_update.user.id);
+    }
+
+    Ok(())
 }

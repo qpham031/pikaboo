@@ -1,5 +1,7 @@
 use twilight_model::http::interaction::InteractionResponse;
 
-pub fn run() -> InteractionResponse {
+use crate::events::interaction_create::ConfirmTradeCustomRole;
+
+pub fn run(data: ConfirmTradeCustomRole) -> InteractionResponse {
     todo!()
 }
