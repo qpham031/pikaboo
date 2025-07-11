@@ -11,6 +11,7 @@ use twilight_model::{
 };
 
 use crate::{
+    consts,
     core::app_state::AppState,
     interactions::{
         confirm_trade_custom_role, confirm_trade_nickname, custom_role, custom_role_subscribe,
@@ -27,10 +28,11 @@ pub async fn handle(state: AppState, mut interaction: Box<InteractionCreate>) ->
     };
 
     let interaction_item = InteractionItem::try_from(interaction.0)?;
+    let state1 = state.clone();
 
     let response = match interaction_item {
-        InteractionItem::Menu => menu::run(),
-        InteractionItem::Inventory => inventory::run(),
+        InteractionItem::Menu => menu::run(state1)?,
+        InteractionItem::Inventory => inventory::run(state1).await?,
         InteractionItem::CustomRole => custom_role::run(),
         InteractionItem::Zones => zones::run(),
         InteractionItem::Shop => shop::run(),
@@ -119,25 +121,22 @@ fn command_extractor(interaction: Interaction) -> Result<InteractionItem> {
         return Err(anyhow::anyhow!("Command without data"));
     };
     Ok(match data.name.as_str() {
-        "pikaboo" => InteractionItem::Menu,
-        "pikaboo-quick" => {
+        consts::interact::PIKABOO => InteractionItem::Menu,
+        cmd @ consts::interact::PIKABOO_QUICK => {
             let Some(name) = data.options.first().map(|op| op.name.as_str()) else {
-                return Err(anyhow::anyhow!("Subcommand is needed: {}", "pikaboo-quick"));
+                return Err(anyhow::anyhow!("Subcommand is needed: {cmd}"));
             };
             match name {
-                "inventory" => InteractionItem::Inventory,
-                "shop" => InteractionItem::Shop,
-                "customrole" => InteractionItem::CustomRole,
-                "zones" => InteractionItem::Zones,
+                consts::interact::INVENTORY => InteractionItem::Inventory,
+                consts::interact::SHOP => InteractionItem::Shop,
+                consts::interact::CUSTOM_ROLE => InteractionItem::CustomRole,
+                consts::interact::ZONES => InteractionItem::Zones,
                 _ => {
-                    return Err(anyhow::anyhow!(
-                        "Unknown Subcommand: {} {name}",
-                        "pikaboo-quick"
-                    ));
+                    return Err(anyhow::anyhow!("Unknown Subcommand: {cmd} {name}"));
                 }
             }
         }
-        "pikaboo-mod" | _ => InteractionItem::Unimplemented,
+        consts::interact::PIKABOO_MOD | _ => InteractionItem::Unimplemented,
     })
 }
 
@@ -150,18 +149,18 @@ fn component_extractor(interaction: Interaction) -> Result<InteractionItem> {
 
     Ok(match data.component_type {
         ComponentType::Button => match data.custom_id.as_str() {
-            "inventory" => InteractionItem::Inventory,
-            "shop" => InteractionItem::Shop,
-            "customrole" => InteractionItem::CustomRole,
-            "tradecustomrole" => InteractionItem::TradeCustomRole,
-            "tradenickname" => InteractionItem::TradeNickname,
-            "customrolesubscribe" => InteractionItem::CustomRoleSubscribe,
-            "customroleunsubscribe" => InteractionItem::CustomRoleUnsubcribe,
+            consts::interact::INVENTORY => InteractionItem::Inventory,
+            consts::interact::SHOP => InteractionItem::Shop,
+            consts::interact::CUSTOM_ROLE => InteractionItem::CustomRole,
+            consts::interact::TRADE_CUSTOM_ROLE => InteractionItem::TradeCustomRole,
+            consts::interact::TRADE_NICKNAME => InteractionItem::TradeNickname,
+            consts::interact::CUSTOM_ROLE_SUBCRIBE => InteractionItem::CustomRoleSubscribe,
+            consts::interact::CUSTOM_ROLE_UNSUBCRIBE => InteractionItem::CustomRoleUnsubcribe,
             _ => InteractionItem::Unimplemented,
         },
         ComponentType::TextSelectMenu => match data.custom_id.as_str() {
-            "shopcustomrole" => InteractionItem::ShopCustomRole,
-            "shopnickname" => InteractionItem::ShopNickname,
+            consts::interact::SHOP_CUSTOM_ROLE => InteractionItem::ShopCustomRole,
+            consts::interact::SHOP_NICKNAME => InteractionItem::ShopNickname,
             _ => InteractionItem::Unimplemented,
         },
         ComponentType::ActionRow
@@ -188,26 +187,16 @@ fn modal_extractor(interaction: Interaction) -> Result<InteractionItem> {
         .collect::<HashMap<_, _>>();
 
     Ok(match data.custom_id.as_str() {
-        "confirmtradecustomrole" => {
+        cid @ consts::interact::CONFIRM_TRADE_CUSTOM_ROLE => {
             let confirmation = inputs
-                .values()
-                .next()
-                .map(|text| text.as_str())
-                .ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "Modal expects to have a data value: {}",
-                        "confirmtradecustomrole"
-                    )
-                })?;
-            InteractionItem::ConfirmTradeCustomRole(ConfirmTradeCustomRole::new(confirmation))
+                .remove(consts::interact::CONFIRM_OKAY)
+                .ok_or_else(|| anyhow::anyhow!("Modal expects to have a data value: {cid}"))?;
+            InteractionItem::ConfirmTradeCustomRole(ConfirmTradeCustomRole::new(&confirmation))
         }
-        "confirmtradenickname" => {
-            let nickname = inputs.remove("nickname").ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Modal expects to have a data value: {}",
-                    "confirmtradenickname"
-                )
-            })?;
+        cid @ consts::interact::CONFIRM_TRADE_NICKNAME => {
+            let nickname = inputs
+                .remove(consts::interact::NICKNAME)
+                .ok_or_else(|| anyhow::anyhow!("Modal expects to have a data value: {cid}"))?;
             InteractionItem::ConfirmTradeNickname(ConfirmTradeNickname { nickname })
         }
         _ => InteractionItem::Unimplemented,
