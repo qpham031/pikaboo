@@ -1,5 +1,13 @@
-use twilight_model::http::interaction::InteractionResponse;
+use twilight_model::http::interaction::{
+    InteractionResponse, InteractionResponseData, InteractionResponseType,
+};
 
 pub fn run() -> InteractionResponse {
-    todo!()
+    InteractionResponse {
+        kind: InteractionResponseType::ChannelMessageWithSource,
+        data: Some(InteractionResponseData {
+            content: Some("Unimplemented interaction".to_string()),
+            ..Default::default()
+        }),
+    }
 }
