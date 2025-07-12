@@ -15,10 +15,10 @@ use twilight_util::builder::embed::EmbedBuilder;
 use crate::{consts, core::app_state::AppState};
 
 pub fn run(state: AppState) -> Result<InteractionResponse> {
-    let config = state.config.read().unwrap();
+    let config_lock = state.config.read().unwrap();
 
     // Cooldown field
-    let cooldown = format!("{} seconds", config.cooldown);
+    let cooldown = format!("{} seconds", config_lock.cooldown);
     let cooldown_field = EmbedField {
         inline: true,
         name: "Cooldown".to_string(),
@@ -27,9 +27,10 @@ pub fn run(state: AppState) -> Result<InteractionResponse> {
 
     // Zones field
     let mut zones = String::new();
-    config.zones.iter().for_each(|zone| {
+    config_lock.zones.iter().for_each(|zone| {
         let _ = write!(&mut zones, "{}", zone.mention());
     });
+    drop(config_lock);
 
     let zone_field = EmbedField {
         inline: true,

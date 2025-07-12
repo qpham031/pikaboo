@@ -42,7 +42,7 @@ async fn scan_custom_roles(state: AppState) {
         }
 
         role.expires_at.replace(now + MONTH_IN_SEC);
-        state.db.update_custom_role(role).await?;
+        state.db.update_custom_role(&role).await?;
         state.cache.user_custom_roles.update(role);
         Ok(())
     }
@@ -91,6 +91,7 @@ async fn scan_custom_roles(state: AppState) {
 
         for role in expired_roles {
             let state = state.clone();
+            let role_id = role.role_id;
 
             let rs = if role.auto_renewal {
                 renew_role(state, role, renew_fee, now).await
@@ -99,7 +100,7 @@ async fn scan_custom_roles(state: AppState) {
             };
 
             if let Err(err) = rs {
-                error!("Unable to remove/renew role <{}>: {err}", role.role_id);
+                error!("Unable to remove/renew role <{}>: {err}", role_id);
             }
         }
 

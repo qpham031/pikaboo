@@ -9,7 +9,6 @@ use std::{env, time::Duration};
 use anyhow::Result;
 use tracing::{error, info};
 use twilight_gateway::{EventTypeFlags, Intents, Shard, ShardId, StreamExt};
-use twilight_model::gateway::payload::outgoing::RequestGuildMembers;
 
 use crate::core::app_state::{AppState, EnvConfig};
 
@@ -42,15 +41,14 @@ async fn main() -> Result<()> {
     let app = AppState::new(env).await;
     background::run(app.clone());
 
-    let intents = Intents::GUILD_MESSAGES | Intents::GUILD_MEMBERS;
+    let intents = Intents::GUILD_MESSAGES | Intents::GUILD_MEMBERS | Intents::GUILDS;
     let mut shard = Shard::new(ShardId::ONE, app.config.env.discord_token.clone(), intents);
     let wanted_event_types = EventTypeFlags::READY
         | EventTypeFlags::MESSAGE_CREATE
-        | EventTypeFlags::MEMBER_CHUNK
-        | EventTypeFlags::MEMBER_UPDATE;
-
-    let request = RequestGuildMembers::builder(app.config.env.guild_id).query("", None);
-    shard.command(&request);
+        | EventTypeFlags::MEMBER_UPDATE
+        | EventTypeFlags::INTERACTION_CREATE
+        | EventTypeFlags::ROLE_UPDATE
+        | EventTypeFlags::GUILD_CREATE;
 
     while let Some(item) = shard.next_event(wanted_event_types).await {
         let Ok(event) = item else {

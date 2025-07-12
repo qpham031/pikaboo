@@ -17,19 +17,26 @@ pub mod interact {
     pub const FAQS: &str = "faqs";
     pub const ABOUT: &str = "about";
 
-    pub const CUSTOM_ROLE: &str = "customrole";
+    pub const CUSTOMROLE: &str = "customrole";
     pub const NICKNAME: &str = "nickname";
     pub const CONFIRM_OKAY: &str = "confirm-okay";
 
-    pub const SHOP_CUSTOM_ROLE: &str = "shop-custom-role";
-    pub const SHOP_NICKNAME: &str = "shop-nickname";
-    pub const TRADE_CUSTOM_ROLE: &str = "trade-custom-role";
-    pub const TRADE_NICKNAME: &str = "trade-nickname";
+    pub const SHOP_CUSTOMROLE: &str = "customrole-shop";
+    pub const SHOP_NICKNAME: &str = "nickname-shop";
+    pub const SHOP_ENERGYBOOST: &str = "energyboost-shop";
+    pub const SHOP_BLINDBOX: &str = "blindbox-shop";
 
-    pub const CUSTOM_ROLE_SUBCRIBE: &str = "custom-role-subscribe";
-    pub const CUSTOM_ROLE_UNSUBCRIBE: &str = "custom-role-unsubscribe";
-    pub const CONFIRM_TRADE_CUSTOM_ROLE: &str = "confirm-trade-custom-role";
-    pub const CONFIRM_TRADE_NICKNAME: &str = "confirm-trade-nickname";
+    pub const INVENTORY_NICKNAME: &str = "nickname-inventory";
+    pub const INVENTORY_CUSTOMROLE: &str = "customrole-inventory";
+
+    pub const CONFIRM_ORDER_CUSTOMROLE: &str = "customrole-order-confirm";
+    pub const CONFIRM_ORDER_NICKNAME: &str = "nickname-order-confirm";
+    pub const CONFIRM_ORDER_ENERGYBOOST: &str = "energyboost-order-confirm";
+    pub const CONFIRM_ORDER_BLINDBOX: &str = "blindbox-order-confirm";
+    pub const CHANGE_NICKNAME: &str = "nickname-change";
+
+    pub const CUSTOMROLE_SUBSCRIBE: &str = "customrole-subscribe";
+    pub const CUSTOMROLE_UNSUBSCRIBE: &str = "customrole-unsubscribe";
 }
 
 pub mod colors {

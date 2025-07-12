@@ -1,13 +1,24 @@
-use std::{fmt::Debug, ops::Deref};
+use std::{
+    fmt::{Debug, Display},
+    ops::Deref,
+};
 
 use anyhow::{Result, anyhow};
 use libsql::{Connection, Database, Value, named_params};
 use serde::Deserialize;
 use tracing::warn;
-use twilight_model::id::{
-    Id,
-    marker::{RoleMarker, UserMarker},
+use twilight_mention::{
+    Mention,
+    timestamp::{Timestamp, TimestampStyle},
 };
+use twilight_model::{
+    id::{
+        Id,
+        marker::{RoleMarker, UserMarker},
+    },
+    util::ImageHash,
+};
+use twilight_util::snowflake::Snowflake;
 
 use crate::core::{
     cache::EnergyData,
@@ -23,12 +34,69 @@ pub struct DatabaseClient {
 #[derive(Debug, Clone)]
 pub struct ConnectionWrapper(Connection);
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct CustomRole {
     pub role_id: Id<RoleMarker>,
     pub user_id: Id<UserMarker>,
-    pub expires_at: Option<u64>,
     pub auto_renewal: bool,
+    pub expires_at: Option<u64>,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub color: u32,
+    #[serde(default)]
+    pub icon: RoleIcon,
+    #[serde(default)]
+    pub mentionable: bool,
+}
+
+impl Display for CustomRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const EXP_MAX: u64 = 8640000000000;
+        const TIMESTAMP_STYLE: Option<TimestampStyle> = Some(TimestampStyle::ShortDate);
+
+        let create_at = self.role_id.timestamp() as u64 / 1000;
+        let expires_at = self.expires_at.unwrap_or(EXP_MAX);
+
+        write!(
+            f,
+            "**Role:** {role}\n\
+            **Owner:** {owner}\n\
+            **Color:** `#{color:06X}`\n\
+            **Icon:** {icon}\n\
+            **Mentionable:** {mentionable}\n\
+            \n\
+            **Created on:** {created_at}\n\
+            **Expires on:** {expires_at}\n\
+            **Auto-renewal:** `{auto_renewal}`",
+            role = self.role_id.mention(),
+            owner = self.user_id.mention(),
+            auto_renewal = self.auto_renewal,
+            created_at = Timestamp::new(create_at, TIMESTAMP_STYLE).mention(),
+            expires_at = Timestamp::new(expires_at, TIMESTAMP_STYLE).mention(),
+            color = self.color,
+            icon = self.icon,
+            mentionable = self.mentionable
+        )
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub enum RoleIcon {
+    Custom(ImageHash),
+    Unicode(String),
+    #[default]
+    None,
+}
+
+impl Display for RoleIcon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RoleIcon::Custom(hash) => write!(f, "Custom({hash})"),
+            RoleIcon::Unicode(emoji) => write!(f, "Unicode({emoji})"),
+            RoleIcon::None => write!(f, "None"),
+        }
+    }
 }
 
 impl DatabaseClient {
@@ -234,7 +302,7 @@ impl ConnectionWrapper {
         Ok(affected_rows != 0)
     }
 
-    pub async fn update_custom_role(&self, role: CustomRole) -> Result<bool> {
+    pub async fn update_custom_role(&self, role: &CustomRole) -> Result<bool> {
         let affected_rows = self
             .0
             .execute(
